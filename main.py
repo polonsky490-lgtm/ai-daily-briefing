@@ -10,28 +10,27 @@ def get_briefing():
     try:
         genai.configure(api_key=GEMINI_KEY)
         
-        # Пробуем самую стабильную модель
-        model = genai.GenerativeModel('gemini-pro')
+        # Используем самую актуальную модель из твоего списка
+        model = genai.GenerativeModel('gemini-3-flash-preview')
         
+        # Возвращаем наш детальный промпт
         prompt = """
-        Ты — ИИ-аналитик. Подготовь отчет для Григория. 
-        1. ИИ-ИНСАЙДЫ (3 шт).
-        2. ИИ-ПРОЕКТЫ (5 шт с описанием и ссылками).
-        Используй эмодзи. Стиль лаконичный.
+        Ты — ИИ-аналитик. Подготовь ежедневный отчет для Григория. 
+        Структура:
+        1. 🧠 ИИ-ИНСАЙДЫ: Топ-3 тренда за 24 часа.
+        2. 🚀 ИИ-ПРОЕКТЫ: Топ-5 новых прикладных сервисов (не просто LLM). 
+           Для каждого: Название, эмодзи-логотип, краткая суть, ссылка.
+        Стиль: Профессиональный, лаконичный.
         """
         
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        # Если снова ошибка — мы хотим знать, какие модели нам ВООБЩЕ доступны
-        try:
-            models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            return f"Ошибка модели. Доступные варианты: {models}. Ошибка: {str(e)}"
-        except:
-            return f"Критическая ошибка API: {str(e)}"
+        return f"Ошибка при работе с Gemini: {str(e)}"
 
 def send_to_tg(text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+    # Отправляем как обычный текст, чтобы не было ошибок форматирования
     requests.post(url, json={"chat_id": CHAT_ID, "text": text})
 
 if __name__ == "__main__":
