@@ -2,34 +2,36 @@ import os
 import google.generativeai as genai
 import requests
 
-# Загрузка секретов из системы
+# Загрузка секретов
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 TG_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# Настройка Gemini
-genai.configure(api_key=GEMINI_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
-
-# Твой модульный промпт
-PROMPT = """
-Ты — профессиональный ИИ-аналитик. Подготовь ежедневный отчет для Григория. 
-Дата: сегодня.
-Структура:
-1. 🧠 ИИ-ИНСАЙДЫ: Топ-3 тренда за 24 часа.
-2. 🚀 ИИ-ПРОЕКТЫ: Топ-5 новых прикладных сервисов (не просто LLM). 
-   Для каждого: Название, эмодзи-логотип, краткая суть, ссылка.
-Стиль: Профессиональный, Markdown.
-"""
-
 def get_briefing():
-    response = model.generate_content(PROMPT)
-    return response.text
+    try:
+        genai.configure(api_key=GEMINI_KEY)
+        # Используем обновленную модель
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = """
+        Ты — ИИ-аналитик. Подготовь краткий отчет для Григория. 
+        1. ИИ-ИНСАЙДЫ (3 шт).
+        2. ИИ-ПРОЕКТЫ (5 шт с описанием и ссылками).
+        Используй только базовый текст, без сложных символов.
+        """
+        
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Ошибка при работе с Gemini: {str(e)}"
 
 def send_to_tg(text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": text, "parse_mode": "Markdown"}
-    requests.post(url, json=payload)
+    # Убираем parse_mode="Markdown", чтобы исключить ошибки форматирования на первом этапе
+    payload = {"chat_id": CHAT_ID, "text": text}
+    res = requests.post(url, json=payload)
+    if res.status_code != 200:
+        print(f"Ошибка Telegram: {res.text}")
 
 if __name__ == "__main__":
     report = get_briefing()
