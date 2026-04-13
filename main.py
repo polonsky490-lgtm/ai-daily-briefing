@@ -2,37 +2,43 @@ import os
 import google.generativeai as genai
 import requests
 
+# Загрузка секретов
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 TG_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-def get_briefing():
+def get_instruction():
+    # Читаем промпт из внешнего текстового файла
+    try:
+        with open("instruction.txt", "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        return "Подготовь краткий отчет об ИИ." # Запасной вариант
+
+def get_briefing(instruction):
     try:
         genai.configure(api_key=GEMINI_KEY)
-        
-        # Используем самую актуальную модель из твоего списка
+        # Твоя проверенная модель
         model = genai.GenerativeModel('gemini-3-flash-preview')
         
-        # Возвращаем наш детальный промпт
-        prompt = """
-        Ты — ИИ-аналитик. Подготовь ежедневный отчет для Григория. 
-        Структура:
-        1. 🧠 ИИ-ИНСАЙДЫ: Топ-3 тренда за 24 часа.
-        2. 🚀 ИИ-ПРОЕКТЫ: Топ-5 новых прикладных сервисов (не просто LLM). 
-           Для каждого: Название, эмодзи-логотип, краткая суть, ссылка.
-        Стиль: Профессиональный, лаконичный.
-        """
-        
-        response = model.generate_content(prompt)
+        response = model.generate_content(instruction)
         return response.text
     except Exception as e:
         return f"Ошибка при работе с Gemini: {str(e)}"
 
 def send_to_tg(text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-    # Отправляем как обычный текст, чтобы не было ошибок форматирования
-    requests.post(url, json={"chat_id": CHAT_ID, "text": text})
+    # Отправляем сообщение частями, если оно слишком длинное для Telegram
+    if len(text) > 4000:
+        for x in range(0, len(text), 4000):
+            requests.post(url, json={"chat_id": CHAT_ID, "text": text[x:x+4000]})
+    else:
+        requests.post(url, json={"chat_id": CHAT_ID, "text": text})
 
 if __name__ == "__main__":
-    report = get_briefing()
+    # 1. Получаем "мозги" из текстового файла
+    current_instruction = get_instruction()
+    # 2. Генерируем отчет
+    report = get_briefing(current_instruction)
+    # 3. Доставляем в Telegram
     send_to_tg(report)
