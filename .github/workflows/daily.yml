@@ -1,7 +1,8 @@
 name: Daily AI Briefing
 on:
   schedule:
-    - cron: '0 5 * * *'
+    # Попробуем запустить в 05:15 UTC (08:15 по Киеву)
+    - cron: '15 5 * * *'
   workflow_dispatch:
 
 jobs:
